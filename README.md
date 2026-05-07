@@ -14,7 +14,7 @@ The dashboard analyzes historical coffee transaction data to:
 
 The system helps businesses make data-driven decisions related to inventory management, staffing, and operational planning.
 
----
+
 
 # 🚀 Features
 
@@ -42,7 +42,6 @@ The system helps businesses make data-driven decisions related to inventory mana
 - Store selector
 - Hour-based forecasting
 
----
 
 # 🛠️ Technologies Used
 
@@ -54,7 +53,7 @@ The system helps businesses make data-driven decisions related to inventory mana
 - Matplotlib
 - Seaborn
 
----
+
 
 # 📂 Dataset
 
@@ -67,7 +66,7 @@ The dataset contains coffee retail transaction data including:
 - Product category
 - Product type
 
----
+
 
 # 📉 Evaluation Metrics
 
@@ -76,7 +75,7 @@ The models were evaluated using:
 - MAE (Mean Absolute Error)
 - RMSE (Root Mean Squared Error)
 
----
+
 
 # ▶️ How to Run
 
@@ -92,7 +91,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
----
+
 
 # 📌 Project Objectives
 
@@ -102,7 +101,7 @@ streamlit run app.py
 - Improve inventory planning
 - Support data-driven decision making
 
----
+
 
 # 📷 Dashboard Modules
 
@@ -114,7 +113,7 @@ streamlit run app.py
 - Model Evaluation
 - Live Prediction System
 
----
+
 
 # 📈 Future Improvements
 
@@ -124,7 +123,7 @@ streamlit run app.py
 - Cloud deployment
 - Automated model retraining
 
----
+
 
 # 👩‍💻 Author
 
