@@ -17,7 +17,7 @@ st.title("Coffee Sales Prediction Dashboard")
 # -------------------------------
 # LOAD DATA
 # -------------------------------
-df = pd.read_excel(r'D:Afficionado Coffee Roasters.xlsx')
+df = pd.read_excel(r'Afficionado Coffee Roasters.xlsx')
 
 # -------------------------------
 # CLEANING
