@@ -90,7 +90,8 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
-
+## 3. 🔗 Live App
+https://coffee-sales-forecasting-dashboard.streamlit.app/
 
 
 # 📌 Project Objectives
