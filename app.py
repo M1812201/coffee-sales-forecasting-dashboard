@@ -18,7 +18,7 @@ st.title("Coffee Sales and Demand Prediction Dashboard")
 # LOAD DATA
 # -------------------------------
 # Using your local path
-df = pd.read_excel(r'D:\Project1\Afficionado Coffee Roasters.xlsx')
+df = pd.read_excel(r'Afficionado Coffee Roasters.xlsx')
 
 # -------------------------------
 # DATA CLEANING
