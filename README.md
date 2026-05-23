@@ -63,17 +63,16 @@ Ensure you have Python installed, then pull down dependencies:
 ```bash
 pip install pandas streamlit numpy seaborn matplotlib scikit-learn openpyxl
 
-## Configure File Path
+### Configure File Path
 df = pd.read_excel(r'Local Drive:\Your_Folder_Name\Afficionado Coffee Roasters.xlsx')
 
 
-### 2. Run Streamlit App
+### Run Streamlit App
 
-```bash
 streamlit run app.py
-```
 
-### 3. 🔗 Live App
+
+### 2. 🔗 Live App
 https://coffee-sales-forecasting-dashboard.streamlit.app/
 
 
