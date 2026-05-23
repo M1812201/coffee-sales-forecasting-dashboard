@@ -9,18 +9,19 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # -------------------------------
-# PAGE SETUP
+# PAGE CONFIG
 # -------------------------------
-st.set_page_config(page_title="Coffee Sales Prediction", layout="wide")
-st.title("Coffee Sales Prediction Dashboard")
+st.set_page_config(page_title="Coffee Demand Intelligence", layout="wide")
+st.title("Coffee Sales and Demand Prediction Dashboard")
 
 # -------------------------------
 # LOAD DATA
 # -------------------------------
-df = pd.read_excel(r'Afficionado Coffee Roasters.xlsx')
+# Using your local path
+df = pd.read_excel(r'D:\Project1\Afficionado Coffee Roasters.xlsx')
 
 # -------------------------------
-# CLEANING
+# DATA CLEANING
 # -------------------------------
 df["transaction_time"] = pd.to_datetime(
     df["transaction_time"].astype(str).str.strip(),
@@ -29,6 +30,7 @@ df["transaction_time"] = pd.to_datetime(
 )
 
 df["hour"] = df["transaction_time"].dt.hour
+df["dayofweek"] = pd.to_datetime(df["year"].astype(str) + "-01-01").dt.dayofweek
 df["revenue"] = df["transaction_qty"] * df["unit_price"]
 
 st.success("Data Loaded Successfully")
@@ -39,8 +41,8 @@ st.success("Data Loaded Successfully")
 st.sidebar.header("Controls")
 
 forecast_horizon = st.sidebar.slider(
-    "Forecast Horizon (Hours)",
-    1, 72, 24
+    "Forecast Horizon (Days Simulation)",
+    1, 30, 7
 )
 
 metric = st.sidebar.radio(
@@ -48,209 +50,208 @@ metric = st.sidebar.radio(
     ["Quantity", "Revenue"]
 )
 
-if metric == "Revenue":
-    target_col = "revenue"
-else:
-    target_col = "transaction_qty"
-
-# -------------------------------
-# BASIC METRICS
-# -------------------------------
-st.subheader("Overall Metrics")
-st.write("Total Quantity:", df["transaction_qty"].sum())
-st.write("Total Revenue:", df["revenue"].sum())
-
-# -------------------------------
-# ANALYSIS
-# -------------------------------
-st.subheader("Peak Hour Analysis")
-
-hourly_sales = df.groupby("hour")[target_col].sum()
-st.line_chart(hourly_sales)
-
-st.subheader("Store-wise Sales")
-store_sales = df.groupby("store_location")[target_col].sum()
-st.bar_chart(store_sales)
-
-st.subheader("Category Analysis")
-category_sales = df.groupby("product_category")[target_col].sum()
-st.bar_chart(category_sales)
-
-# -------------------------------
-# BUSINESS INSIGHTS
-# -------------------------------
-st.subheader("Business Insights")
-
-peak_store = df.groupby(["store_location", "hour"])[target_col].sum().reset_index()
-
-peak_store_final = peak_store.loc[
-    peak_store.groupby("store_location")[target_col].idxmax()
-].sort_values(by=target_col, ascending=False)
-
-peak_store_final.columns = ["Store", "Peak Hour", "Sales"]
-
-st.dataframe(peak_store_final)
-
-best_store = df.groupby("store_location")[target_col].sum().idxmax()
-low_store = df.groupby("store_location")[target_col].sum().idxmin()
-
-st.write("Best Store:", best_store)
-st.write("Lowest Store:", low_store)
-
-# -------------------------------
-# MACHINE LEARNING
-# -------------------------------
-st.subheader("Machine Learning Model")
-
-hourly_data = df.groupby(["hour", "store_location"])[target_col].sum().reset_index()
-
-hourly_data["lag_1"] = hourly_data[target_col].shift(1)
-hourly_data["rolling_3"] = hourly_data[target_col].rolling(3).mean()
-hourly_data = hourly_data.fillna(0)
-
-hourly_data = pd.get_dummies(hourly_data, columns=["store_location"])
-
-X = hourly_data.drop(target_col, axis=1)
-y = hourly_data[target_col]
-
-split_index = int(len(X) * 0.8)
-
-X_train, X_test = X[:split_index], X[split_index:]
-y_train, y_test = y[:split_index], y[split_index:]
-
-# -------------------------------
-# MODELS
-# -------------------------------
-lr_model = LinearRegression()
-lr_model.fit(X_train, y_train)
-lr_pred = lr_model.predict(X_test)
-
-gb_model = GradientBoostingRegressor()
-gb_model.fit(X_train, y_train)
-gb_pred = gb_model.predict(X_test)
-
-# -------------------------------
-# BASELINES
-# -------------------------------
-naive_pred = y_test.shift(1).bfill()
-moving_avg_pred = y_test.rolling(3).mean().bfill()
-
-# -------------------------------
-# CONFIDENCE INTERVAL (ADDED)
-# -------------------------------
-residuals = y_test - lr_pred
-std_error = np.std(residuals)
-z = 1.96  # 95% confidence
-
-upper_bound = lr_pred + z * std_error
-lower_bound = lr_pred - z * std_error
-
-# -------------------------------
-# EVALUATION
-# -------------------------------
-st.subheader("Model Evaluation")
-
-def evaluate(name, y_true, y_pred):
-    mae = mean_absolute_error(y_true, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    st.write(f"{name} MAE: {round(mae,2)}")
-    st.write(f"{name} RMSE: {round(rmse,2)}")
-    st.write("---")
-
-evaluate("Linear Regression", y_test, lr_pred)
-evaluate("Gradient Boosting", y_test, gb_pred)
-evaluate("Naive", y_test, naive_pred)
-evaluate("Moving Average", y_test, moving_avg_pred)
-
-# -------------------------------
-# FORECAST + CONFIDENCE INTERVAL
-# -------------------------------
-st.subheader("Forecast Visualization (with Confidence Interval)")
+target_col = "revenue" if metric == "Revenue" else "transaction_qty"
 
 store_list = df["store_location"].unique()
-selected_store = st.selectbox("Select Store", store_list)
+selected_store = st.sidebar.selectbox("Select Store", store_list)
 
-store_col = "store_location_" + selected_store
+# -------------------------------
+# TABS (PRODUCTION UI)
+# -------------------------------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊 Dashboard",
+    "📈 Forecast",
+    "📉 Model Evaluation",
+    "⚙ KPIs"
+])
 
-if store_col in X_test.columns:
+# =========================================================
+# TAB 1 - POWER BI STYLE DASHBOARD (FILTERED BY STORE)
+# =========================================================
+with tab1:
+    # Filter the dataset based on the sidebar store selector
+    df_filtered = df[df["store_location"] == selected_store]
 
-    # -------------------------------
-    # FIX: reset index to avoid mismatch error
-    # -------------------------------
-    test_df = pd.DataFrame({
-        "Actual": y_test.values,
-        "Predicted": lr_pred,
-        "Upper": upper_bound,
-        "Lower": lower_bound,
-        store_col: X_test[store_col].values
-    }).reset_index(drop=True)
+    # Custom styling header matching your red Power BI title banner
+    st.markdown(
+        f"<h3 style='text-align: center; color: #1E3A8A;'>Historical Performance Analysis — {selected_store}</h3>", 
+        unsafe_allow_html=True
+    )
+    st.markdown("---")
 
-    # safe filtering
-    store_data = test_df[test_df[store_col] == 1]
+    # Recreating your 3 Power BI KPI Cards side-by-side
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        total_rev = df_filtered["revenue"].sum()
+        st.metric(label="Total Revenue", value=f"${total_rev:,.2f}")
+        
+    with col2:
+        total_items = df_filtered["transaction_qty"].sum()
+        st.metric(label="Total Items Sold", value=f"{total_items:,}")
+        
+    with col3:
+        # Custom DAX: Revenue divided by Total Items Sold
+        avg_price = total_rev / total_items if total_items > 0 else 0
+        st.metric(label="Avg Price Per Item", value=f"${avg_price:.2f}")
 
-    if len(store_data) > 0:
+    st.markdown("---")
 
+    # Charts Layout - Split into Two Columns
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        st.subheader("Revenue by Category")
+        # Horizontal bar chart matching your Power BI product categories
+        category_data = df_filtered.groupby("product_category")["revenue"].sum().sort_values(ascending=True)
+        st.bar_chart(category_data, horizontal=True)
+
+    with chart_col2:
+        st.subheader("Hourly Sales Trend")
+        # Line chart tracking customer volume peaks by hour
+        hourly_data = df_filtered.groupby("hour")[target_col].sum()
+        st.line_chart(hourly_data)
+
+    st.markdown("---")
+    st.subheader("Store Density Heatmap (Hour vs Location)")
+    # Keeps your advanced heat grid representation intact across all data
+    heatmap_data = df.groupby(["hour", "store_location"])[target_col].sum().unstack()
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    sns.heatmap(heatmap_data, cmap="YlGnBu", ax=ax)
+    st.pyplot(fig)
+
+# =========================================================
+# FEATURE ENGINEERING (ML PREPARATION)
+# =========================================================
+df_model = df.copy()
+df_model = df_model.groupby(["hour", "store_location"])[target_col].sum().reset_index()
+
+df_model["lag_1"] = df_model[target_col].shift(1)
+df_model["lag_24"] = df_model[target_col].shift(24)
+df_model["lag_168"] = df_model[target_col].shift(168)
+df_model["rolling_3"] = df_model[target_col].rolling(3).mean()
+
+df_model = pd.get_dummies(df_model, columns=["store_location"])
+df_model = df_model.fillna(0)
+
+X = df_model.drop(target_col, axis=1)
+y = df_model[target_col]
+
+split = int(len(X) * 0.8)
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# =========================================================
+# MACHINE LEARNING MODELS
+# =========================================================
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+
+gb = GradientBoostingRegressor()
+gb.fit(X_train, y_train)
+
+lr_pred = lr.predict(X_test)
+gb_pred = gb.predict(X_test)
+
+# =========================================================
+# CONFIDENCE INTERVAL CALCULATIONS
+# =========================================================
+residuals = y_test - lr_pred
+std = np.std(residuals)
+z = 1.96
+
+upper = lr_pred + z * std
+lower = lr_pred - z * std
+
+# =========================================================
+# TAB 2 - FORECAST
+# =========================================================
+with tab2:
+    st.subheader("Forecast with Confidence Interval")
+
+    store_col = "store_location_" + selected_store
+
+    if store_col in X_test.columns:
+        plot_df = pd.DataFrame({
+            "Actual": y_test.values,
+            "Predicted": lr_pred,
+            "Upper": upper,
+            "Lower": lower,
+            "Store": X_test[store_col].values
+        }).reset_index(drop=True)
+
+        # FILTER SELECTED STORE
+        plot_df = plot_df[plot_df["Store"] == 1]
+        
         fig, ax = plt.subplots(figsize=(10, 5))
-
-        ax.plot(store_data["Actual"].values, label="Actual", color="blue")
-        ax.plot(store_data["Predicted"].values, label="Predicted", color="green")
-
+        ax.plot(plot_df["Actual"].values, label="Actual", color="blue")
+        ax.plot(plot_df["Predicted"].values, label="Predicted", color="green")
         ax.fill_between(
-            range(len(store_data)),
-            store_data["Lower"],
-            store_data["Upper"],
-            color="gray",
+            range(len(plot_df)),
+            plot_df["Lower"],
+            plot_df["Upper"],
             alpha=0.3,
+            color="gray",
             label="Confidence Interval"
         )
-
-        ax.set_title("Forecast with Confidence Interval")
         ax.legend()
-
         st.pyplot(fig)
 
-    else:
-        st.warning("No data available for selected store")
-# -------------------------------
-# HEATMAP
-# -------------------------------
-st.subheader("Hourly Demand Heatmap")
+# =========================================================
+# TAB 3 - MODEL EVALUATION
+# =========================================================
+with tab3:
+    st.subheader("Model Performance Evaluation")
 
-heatmap_data = df.groupby(["hour", "store_location"])[target_col].sum().unstack()
+    def show(name, y_true, y_pred):
+        st.write(f"### {name}")
+        st.write("MAE:", round(mean_absolute_error(y_true, y_pred), 2))
+        st.write("RMSE:", round(np.sqrt(mean_squared_error(y_true, y_pred)), 2))
+        st.write("---")
 
-fig, ax = plt.subplots(figsize=(8, 4))
+    show("Linear Regression", y_test, lr_pred)
+    show("Gradient Boosting (Ensemble)", y_test, gb_pred)
 
-sns.heatmap(
-    heatmap_data,
-    ax=ax,
-    cmap="YlGnBu",
-    annot=False,
-    linewidths=0.3
-)
+# =========================================================
+# TAB 4 - KPI DASHBOARD
+# =========================================================
+with tab4:
+    st.subheader("Key Performance Indicators")
 
-st.pyplot(fig)
+    st.metric("Forecast MAE", round(mean_absolute_error(y_test, lr_pred), 2))
+    st.metric("Forecast RMSE", round(np.sqrt(mean_squared_error(y_test, lr_pred)), 2))
 
-# -------------------------------
-# PREDICTION UI
-# -------------------------------
-st.subheader("Predict Sales")
+    peak_hour = df.groupby("hour")[target_col].sum().idxmax()
+    st.metric("Peak Demand Hour", f"{peak_hour}:00 AM/PM")
 
-input_hour = st.slider("Select Hour", 0, 23, 10)
-input_store = st.selectbox("Select Store Location (Prediction)", store_list)
+    best_store = df.groupby("store_location")[target_col].sum().idxmax()
+    st.metric("Best Performing Store", best_store)
+
+# =========================================================
+# LIVE INTERACTIVE PREDICTION WIDGET
+# =========================================================
+st.markdown("---")
+st.subheader("Live Model Prediction Playground")
+
+input_hour = st.slider("Hour of Day Simulation", 0, 23, 10)
 
 input_data = {
     "hour": input_hour,
     "lag_1": 0,
+    "lag_24": 0,
+    "lag_168": 0,
     "rolling_3": 0
 }
 
 for col in X.columns:
     if col.startswith("store_location_"):
-        input_data[col] = 1 if col == "store_location_" + input_store else 0
+        input_data[col] = 1 if col == "store_location_" + selected_store else 0
 
 input_df = pd.DataFrame([input_data])
 input_df = input_df.reindex(columns=X.columns, fill_value=0)
 
-predicted_sales = lr_model.predict(input_df)[0]
+pred = lr.predict(input_df)[0]
+# Prevent negative forecasting simulations
+pred_final = max(0, pred)
 
-st.success(f"Estimated {metric}: {round(predicted_sales,2)}")
+st.success(f"Predicted {metric} Demand for {selected_store} at {input_hour}:00 is: {round(pred_final, 2)}")
