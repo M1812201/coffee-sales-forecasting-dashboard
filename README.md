@@ -34,7 +34,7 @@ The dashboard analyzes historical retail footprints to:
 
 ---
 
-# 📂 Dataset Archetype
+# 📂 Dataset 
 The system processes structured retail transaction records containing features critical to demand planning:
 * `transaction_time` / `hour` (Temporal anchors)
 * `transaction_qty` (Volume marker)
